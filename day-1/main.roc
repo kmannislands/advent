@@ -6,12 +6,6 @@ app "day-1-solution"
     ]
     provides [main] to pf
 
-# strJoin: List Str, Str -> Str
-# strJoin = \list, joinStr ->
-#     List.walk list "" \acc, str ->
-#         Str.concat acc joinStr
-#         |> Str.concat str
-
 # https://www.ascii-code.com/
 isDigit = \baseTenByte -> Bool.and (47 < baseTenByte) (baseTenByte < 58)
 isLineSep = \baseTenByte -> baseTenByte == 10
@@ -33,7 +27,6 @@ main =
             byteU32 = Num.toU32 byte
             { acc & lineDigits: List.append acc.lineDigits byteU32 }
         else if (isLineSep byte) then
-            # TODO handle ascii code => decimal conversion
             lineSum = sumLine acc.lineDigits
             { lineDigits: [], runningSum: acc.runningSum + lineSum  }
         else
