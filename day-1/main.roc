@@ -28,15 +28,15 @@ sumLine = \lineAsciiDigits ->
 
 
 main =
-    lines = List.walk sample { lineDigits: [], runningSum: 0 } \acc, byte ->
+    lines = List.walk sample { lineDigits: [], runningSum: 0u32 } \acc, byte ->
         if (isDigit byte) then
-            { acc & lineDigits: List.append acc.lineDigits byte }
+            byteU32 = Num.toU32 byte
+            { acc & lineDigits: List.append acc.lineDigits byteU32 }
         else if (isLineSep byte) then
             # TODO handle ascii code => decimal conversion
             lineSum = sumLine acc.lineDigits
             { lineDigits: [], runningSum: acc.runningSum + lineSum  }
         else
-            dbg acc
             acc
 
     Num.toStr lines.runningSum
