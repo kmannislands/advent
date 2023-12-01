@@ -1,0 +1,4 @@
+# ignore extensionless files like binaries produced by the roc compiler
+*
+!/**/
+!*.*
