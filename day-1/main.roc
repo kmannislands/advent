@@ -6,14 +6,38 @@ app "day-1-solution"
     ]
     provides [main] to pf
 
-strJoin: List Str, Str -> Str
-strJoin = \list, joinStr ->
-    List.walk list "" \acc, str ->
-        Str.concat acc joinStr
-        |> Str.concat str
+# strJoin: List Str, Str -> Str
+# strJoin = \list, joinStr ->
+#     List.walk list "" \acc, str ->
+#         Str.concat acc joinStr
+#         |> Str.concat str
+
+# https://www.ascii-code.com/
+isDigit = \baseTenByte -> Bool.and (47 < baseTenByte) (baseTenByte < 58)
+isLineSep = \baseTenByte -> baseTenByte == 10
+
+asciiToDigit: Int a -> Int a
+asciiToDigit = \asciiVal -> (asciiVal - 48)
+
+sumLine: List (Int a) -> (Int a)
+sumLine = \lineAsciiDigits ->
+    digitInts = List.map lineAsciiDigits asciiToDigit
+    expect List.len digitInts > 0
+    # TODO crash correctly here? https://www.roc-lang.org/tutorial#crashing-in-unreachable-branches
+    Result.withDefault (List.get digitInts 0) 0 + Result.withDefault (List.last digitInts) 0
+
 
 main =
-    strsList = List.map sample \(bytes) -> Num.toStr bytes
+    lines = List.walk sample { lineDigits: [], runningSum: 0 } \acc, byte ->
+        if (isDigit byte) then
+            { acc & lineDigits: List.append acc.lineDigits byte }
+        else if (isLineSep byte) then
+            # TODO handle ascii code => decimal conversion
+            lineSum = sumLine acc.lineDigits
+            { lineDigits: [], runningSum: acc.runningSum + lineSum  }
+        else
+            dbg acc
+            acc
 
-    Stdout.line (strJoin strsList ", ")
-
+    Num.toStr lines.runningSum
+        |> Stdout.line
