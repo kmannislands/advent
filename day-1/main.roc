@@ -2,15 +2,11 @@ app "day-1-solution"
     packages { pf: "https://github.com/roc-lang/basic-cli/releases/download/0.7.0/bkGby8jb0tmZYsy2hg1E_B2QrCgcSTxdUlHtETwm5m4.tar.br" }
     imports [
         pf.Stdout,
-        "test.txt" as sample : Str,
+        "part-two.txt" as sample : Str,
     ]
     provides [main] to pf
 
 lines = Str.split sample "\n"
-
-expect
-    numberOfLines = List.len lines
-    numberOfLines == 4
 
 # charToByte = \char -> Str.toUtf8 char |> List.get 0 |> Result.withDefault 0
 
@@ -34,10 +30,12 @@ expect ('1' |> byteToInt) == 1
 ## Extract the relevant digits as a list from the line.
 getDigitsFromLine = \line ->
     digitsAcc = Str.walkUtf8 line { digits: [], lineBytes: [] } \acc, byte ->
+        dbg acc
         if isDigit byte then
             { acc& digits: List.append acc.digits (byteToInt byte) }
         else
-            digitValue = when acc.lineBytes is
+            currentLineBytes = List.append acc.lineBytes byte
+            digitValue = when currentLineBytes is
                 ['z', 'e', 'r', 'o', .. ] -> ParsedDigitWithLen 0 4
                 ['o', 'n', 'e', ..] -> ParsedDigitWithLen 1 3
                 ['t', 'w', 'o', ..] -> ParsedDigitWithLen 2 3
@@ -50,17 +48,22 @@ getDigitsFromLine = \line ->
                 ['n', 'i', 'n', 'e', ..] -> ParsedDigitWithLen 9 4
                 _ -> NoneParsed
 
+            dbg digitValue
             when digitValue is
                 ParsedDigitWithLen digit len ->
-                    updatedLineBytes = List.dropFirst acc.lineBytes len
+                    updatedLineBytes = List.dropFirst currentLineBytes len
                     { lineBytes: updatedLineBytes, digits: List.append acc.digits digit }
-                _ -> { acc& lineBytes: List.append acc.lineBytes byte }
+                _ -> { acc& lineBytes: currentLineBytes }
 
     digitsAcc.digits
 
 expect
     testLineDigit = getDigitsFromLine "123"
     testLineDigit == [1, 2, 3]
+
+expect
+    partTwoLine = getDigitsFromLine "9sixsevenz3"
+    partTwoLine == [9, 6, 7, 3]
 
 expect
     partTwoLine = getDigitsFromLine "1two3xfourx5"
