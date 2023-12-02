@@ -6,17 +6,24 @@ app "day-2-solution"
     ]
     provides [main] to pf
 
-# We're going to implement a parser for the game state using a parser combinator pattern
-# Parser combinators work well in functional paradigm
+# We're going to implement a parser for the game state using a parser combinator pattern Parser combinators
+# work well in functional paradigms
 
-# TODO: wrap lines
+# Parsers in parser combinators operate on a 'context', returning a new context after each parse whether
+# successful or failed This context should store line/column information for nice error reporting (more
+# relevant if you're implementing something more complicated like a PL) In this case, we'll store the whole
+# "program" (in this case the game result) string and keep track of line/column (col) information
 advance = \ctx, chars ->
+    # TODO: wrap lines
     { ctx& col: ctx.col + chars }
 
 ## From Day 1: Given as ASCII byte, return whether its a valid digit
 isDigit = \charByte -> Bool.and ('0' <= charByte) (charByte <= '9')
+# We'll also want to know when a UTF8 code point byte is whitespace. For now, let's just worry about ` `
 isWhiteSpace = \charByte -> charByte == ' '
 
+# Also from day 1. Note that we don't perform any safety check. Inputs are assumed to already have gone
+# through isDigit. TODO: This could be improved by checking for overflows and using tagged returns
 byteToInt = \byte -> Num.toU32 (byte - '0')
 bytesToU32 = \digitBytes ->
     len = List.len digitBytes
@@ -31,14 +38,23 @@ expect bytesToU32 ['1', '2'] == 12
 
 uint32 = \_ ->
     \ctx ->
+        # Walk the program as bytes, skipping white space, accumulating character code points if they are a
+        # digit to later convert to an actual roc number and stopping if we encounter a character that
+        # couldn't be part of a number
         { numberBytes, bytesEaten } = Str.walkScalarsUntil ctx.prog { numberBytes: [], bytesEaten: 0 } \state, byte ->
             if isWhiteSpace byte then
-                Continue { state& bytesEaten: state.bytesEaten + 1 }
+                # "Trim" whitespace off the start of a number but end if we have already started parsing a num
+                if (List.len state.numberBytes) == 0 then
+                    Continue { state& bytesEaten: state.bytesEaten + 1 }
+                else
+                    Break state
             else if isDigit byte then
                 Continue { bytesEaten: state.bytesEaten + 1, numberBytes: List.append state.numberBytes byte }
             else
                 Break state
 
+        # If we got some number bytes go ahead and convert them Note this doesn't check for U32 overflow and
+        # should be improved by using Num.checks
         when numberBytes is
             [..] ->
                 uint32Val = bytesToU32 numberBytes
@@ -65,6 +81,11 @@ expect
     ctx = progCtx "111:"
     parsedToken = ctx |> (uint32 Empty)
     parsedToken == TokenNumber { value: 111, ctx: advance ctx 3 }
+
+expect
+    ctx = progCtx "2 3"
+    parsedToken = ctx |> (uint32 Empty)
+    parsedToken == TokenNumber { value: 2, ctx: advance ctx 1 }
 
 parseGameId = \gamePart ->
     when Str.replaceFirst gamePart "Game " "" |> Str.toU32 is
