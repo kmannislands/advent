@@ -38,11 +38,13 @@ getDigitsFromLine = \line ->
             { acc& digits: List.append acc.digits (byteToInt byte) }
         else
             digitValue = when acc.lineBytes is
-                ['t', 'w', 'o', ..] -> Parsed 2
+                ['t', 'w', 'o', ..] -> ParsedDigitWithLen 2 3
                 _ -> NoneParsed
 
             when digitValue is
-                Parsed val -> { acc& digits: List.append acc.digits val }
+                ParsedDigitWithLen digit len ->
+                    updatedLineBytes = List.dropFirst acc.lineBytes len
+                    { lineBytes: updatedLineBytes, digits: List.append acc.digits digit }
                 _ -> { acc& lineBytes: List.append acc.lineBytes byte }
 
     digitsAcc.digits
@@ -55,5 +57,15 @@ expect
     partTwoLine = getDigitsFromLine "1two3xfourx5"
     partTwoLine == [1, 2, 3, 4, 5]
 
+getLineDigitNumber = \listOfDigits ->
+    tensPlace = List.get listOfDigits 0 |> Result.withDefault 0
+    onesPlace = List.last listOfDigits |> Result.withDefault tensPlace
+    (tensPlace * 10) + onesPlace
+
 main =
-    Stdout.line sample
+    fileSum = List.walk lines 0 \sum, line ->
+        sum + (
+            getDigitsFromLine line
+                |> getLineDigitNumber
+            )
+    Num.toStr fileSum |> Stdout.line 
