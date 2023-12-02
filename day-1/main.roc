@@ -12,16 +12,16 @@ expect
     numberOfLines = List.len lines
     numberOfLines == 4
 
-charToByte = \char -> Str.toUtf8 char |> List.get 0 |> Result.withDefault 0
+# charToByte = \char -> Str.toUtf8 char |> List.get 0 |> Result.withDefault 0
 
 # https://www.ascii-code.com/
-zeroByte = charToByte "0"
+zeroByte = '0'
 expect zeroByte == 48
-nineByte = charToByte "9"
+nineByte = '9'
 
 isDigit = \charByte -> Bool.and (zeroByte <= charByte) (charByte <= nineByte)
 
-expect (charToByte "a" |> isDigit) == Bool.false
+expect (isDigit 'a') == Bool.false
 expect (
     Str.toUtf8 "0123456789"
         |> List.all isDigit
@@ -29,7 +29,7 @@ expect (
 
 byteToInt = \byte -> byte - zeroByte
 
-expect (charToByte "1" |> byteToInt) == 1
+expect ('1' |> byteToInt) == 1
 
 ## Extract the relevant digits as a list from the line.
 getDigitsFromLine = \line ->
@@ -37,13 +37,23 @@ getDigitsFromLine = \line ->
         if isDigit byte then
             { acc& digits: List.append acc.digits (byteToInt byte) }
         else
-            acc
+            digitValue = when acc.lineBytes is
+                ['t', 'w', 'o', ..] -> Parsed 2
+                _ -> NoneParsed
+
+            when digitValue is
+                Parsed val -> { acc& digits: List.append acc.digits val }
+                _ -> { acc& lineBytes: List.append acc.lineBytes byte }
 
     digitsAcc.digits
 
 expect
     testLineDigit = getDigitsFromLine "123"
     testLineDigit == [1, 2, 3]
+
+expect
+    partTwoLine = getDigitsFromLine "1two3xfourx5"
+    partTwoLine == [1, 2, 3, 4, 5]
 
 main =
     Stdout.line sample
