@@ -6,20 +6,20 @@ app "day-2-solution"
     ]
     provides [main] to pf
 
+parseGameId = \gamePart ->
+    when Str.replaceFirst gamePart "Game " "" |> Str.toU32 is
+        Ok gameIdInt -> gameIdInt
+        _ -> crash "Failed to parse gameId from partial line '\(gamePart)'"
+
+parseDraws = \drawsPart ->
+    drawsPart
+        
+    
 parseGame = \gameLine ->
     gameLinePieces = Str.split gameLine ": "
-
-    gamePart = when List.get gameLinePieces 0 is
-        Ok elem -> elem
+    when gameLinePieces is
+        [gamePart, drawsPart] -> { gameId: parseGameId gamePart, draws: parseDraws drawsPart }
         _ -> crash "Couldn't parse gameLine \(gameLine)"
-    # draws = List.get gameLinePieces 0 |> Result.withDefault ""
-
-    gameId = when Str.replaceFirst gamePart "Game " "" |> Str.toU32 is
-        Ok gameIdInt -> gameIdInt
-        _ -> crash "Failed to parse gameId \(gameLine)"
-
-    { gameId: gameId }
-
 
 main =
     lines = Str.split sample "\n"
