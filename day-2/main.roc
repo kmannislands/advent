@@ -20,6 +20,7 @@ advance = \ctx, eatStr ->
 
 uint32 = \_ ->
     \ctx ->
+        # This ain't right
         trimmed = Str.trim ctx.prog
         parseResult = trimmed |> Str.toU32
         when parseResult is
@@ -28,9 +29,13 @@ uint32 = \_ ->
                 TokenNumber { value: uint32Val, ctx: newCtx }
             _ -> ParseError ctx
 
+progCtx = \prog -> { prog: prog, line: 0, col: 0 }
+
+## Simplest case -- pre-trimmed
 expect 
-    parsedToken = ((uint32 Empty) { prog: "23", line: 0, col: 0 })
-    parsedToken == TokenNumber { value: 23, ctx: { prog: "23", line: 0, col: 2 } }
+    ctx = progCtx "23"
+    parsedToken = ctx |> (uint32 Empty)
+    parsedToken == TokenNumber { value: 23, ctx: advance ctx "23" }
 
 parseGameId = \gamePart ->
     when Str.replaceFirst gamePart "Game " "" |> Str.toU32 is
