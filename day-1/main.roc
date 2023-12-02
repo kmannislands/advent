@@ -38,7 +38,16 @@ getDigitsFromLine = \line ->
             { acc& digits: List.append acc.digits (byteToInt byte) }
         else
             digitValue = when acc.lineBytes is
+                ['z', 'e', 'r', 'o', .. ] -> ParsedDigitWithLen 0 4
+                ['o', 'n', 'e', ..] -> ParsedDigitWithLen 1 3
                 ['t', 'w', 'o', ..] -> ParsedDigitWithLen 2 3
+                ['t', 'h', 'r', 'e', 'e', ..] -> ParsedDigitWithLen 3 5
+                ['f', 'o', 'u', 'r', ..] -> ParsedDigitWithLen 4 4
+                ['f', 'i', 'v', 'e', ..] -> ParsedDigitWithLen 5 4
+                ['s', 'i', 'x', ..] -> ParsedDigitWithLen 6 3
+                ['s', 'e', 'v', 'e', 'n', ..] -> ParsedDigitWithLen 7 5
+                ['e', 'i', 'g', 'h', 't', ..] -> ParsedDigitWithLen 8 5
+                ['n', 'i', 'n', 'e', ..] -> ParsedDigitWithLen 9 4
                 _ -> NoneParsed
 
             when digitValue is
