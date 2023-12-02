@@ -11,8 +11,18 @@ parseGameId = \gamePart ->
         Ok gameIdInt -> gameIdInt
         _ -> crash "Failed to parse gameId from partial line '\(gamePart)'"
 
+# Draw : {
+#     red: Num U8,
+#     blue: Num U8,
+#     green: Num U8,
+# }
+# parseDraws: Str -> List Draw
 parseDraws = \drawsPart ->
-    drawsPart
+    drawStrs = Str.split drawsPart "; "
+    draws = List.map drawStrs \_drawStr ->
+        { red: 0, green: 0, blue: 0 }
+    draws
+
         
     
 parseGame = \gameLine ->
