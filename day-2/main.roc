@@ -35,15 +35,35 @@ parseDraws = \drawsPart ->
                         _ -> crash "Unrecognized Color '\(colorStr)' in 'colorResult"
             
                 _ -> crash "Couldn't parse number and count out of draw piece \(drawStr)"
-    
+
 parseGame = \gameLine ->
     gameLinePieces = Str.split gameLine ": "
     when gameLinePieces is
         [gamePart, drawsPart] -> { gameId: parseGameId gamePart, draws: parseDraws drawsPart }
         _ -> crash "Couldn't parse gameLine \(gameLine)"
 
+cubesInBag = {
+    red: 12,
+    green: 13,
+    blue: 14
+}
+
+isImpossibleGame = \game ->
+    List.any game.draws \draw ->
+        (draw.red > cubesInBag.red) || (draw.green > cubesInBag.green) || (draw.blue > cubesInBag.blue)
+
+findPossibleGames = \gameResults ->
+    List.walk gameResults [] \possibleSoFar, game ->
+        if isImpossibleGame game then
+            possibleSoFar
+        else
+            List.append possibleSoFar game.gameId
+
 main =
     lines = Str.split sample "\n"
     gameResults = List.map lines \line -> parseGame line
     dbg gameResults
-    Stdout.line "done"
+    possibleGames = findPossibleGames gameResults
+    dbg possibleGames
+    sumOfImpossibleIds = List.walk possibleGames 0 \total, gameId -> total + gameId
+    Num.toStr sumOfImpossibleIds |> Stdout.line 
