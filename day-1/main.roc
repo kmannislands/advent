@@ -2,43 +2,48 @@ app "day-1-solution"
     packages { pf: "https://github.com/roc-lang/basic-cli/releases/download/0.7.0/bkGby8jb0tmZYsy2hg1E_B2QrCgcSTxdUlHtETwm5m4.tar.br" }
     imports [
         pf.Stdout,
-        "input.txt" as sample : List U8,
+        "test.txt" as sample : Str,
     ]
     provides [main] to pf
 
+lines = Str.split sample "\n"
+
+expect
+    numberOfLines = List.len lines
+    numberOfLines == 4
+
+charToByte = \char -> Str.toUtf8 char |> List.get 0 |> Result.withDefault 0
+
 # https://www.ascii-code.com/
-isDigit = \baseTenByte -> Bool.and (47 < baseTenByte) (baseTenByte < 58)
-isLineSep = \baseTenByte -> baseTenByte == 10
+zeroByte = charToByte "0"
+expect zeroByte == 48
+nineByte = charToByte "9"
 
-asciiToDigit: Int a -> Int a
-asciiToDigit = \asciiVal -> (asciiVal - 48)
+isDigit = \charByte -> Bool.and (zeroByte <= charByte) (charByte <= nineByte)
 
-# sumLine: List (Int a) -> (Int a)
-sumLine = \lineAsciiDigits ->
-    digitInts = List.map lineAsciiDigits asciiToDigit
-    expect List.len digitInts > 0
-    # TODO crash correctly here? https://www.roc-lang.org/tutorial#crashing-in-unreachable-branches
-    firstDigit = Result.withDefault (List.get digitInts 0) 0
-    lastDigit = Result.withDefault (List.last digitInts) 0
-    # TODO: perf. Don't cast to string, come up with a bitshift trick
-    numStr = Str.concat (Num.toStr firstDigit) (Num.toStr lastDigit)
-    Result.withDefault (Str.toU32 numStr) 0
+expect (charToByte "a" |> isDigit) == Bool.false
+expect (
+    Str.toUtf8 "0123456789"
+        |> List.all isDigit
+) == Bool.true
 
+byteToInt = \byte -> byte - zeroByte
 
-main =
-    lines = List.walk sample { lineDigits: [], runningSum: 0u32 } \acc, byte ->
-        if (isDigit byte) then
-            byteU32 = Num.toU32 byte
-            dbg T "Handling digit" acc byte
-            { acc & lineDigits: List.append acc.lineDigits byteU32 }
-        else if (isLineSep byte) then
-            lineSum = sumLine acc.lineDigits
-            dbg T "Finishing line" acc lineSum
-            { lineDigits: [], runningSum: acc.runningSum + lineSum  }
+expect (charToByte "1" |> byteToInt) == 1
+
+## Extract the relevant digits as a list from the line.
+getDigitsFromLine = \line ->
+    digitsAcc = Str.walkUtf8 line { digits: [], lineBytes: [] } \acc, byte ->
+        if isDigit byte then
+            { acc& digits: List.append acc.digits (byteToInt byte) }
         else
-            dbg T "In else" acc byte
             acc
 
-    finalSum = lines.runningSum + (sumLine lines.lineDigits)
-    Num.toStr finalSum
-        |> Stdout.line
+    digitsAcc.digits
+
+expect
+    testLineDigit = getDigitsFromLine "123"
+    testLineDigit == [1, 2, 3]
+
+main =
+    Stdout.line sample
