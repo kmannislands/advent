@@ -6,26 +6,43 @@ app "day-2-solution"
     ]
     provides [main] to pf
 
-# Ctx : {
-#     line: U8,
-#     col: U8,
-#     prog: Str,
-# }
+# We're going to implement a parser for the game state using a parser combinator pattern
+# Parser combinators work well in functional paradigm
 
-# advance: (Ctx, Int) -> Ctx
 # TODO: wrap lines
-advance = \ctx, eatStr ->
-    chars = Str.toUtf8 eatStr |> List.len 
+advance = \ctx, chars ->
     { ctx& col: ctx.col + chars }
+
+## From Day 1: Given as ASCII byte, return whether its a valid digit
+isDigit = \charByte -> Bool.and ('0' <= charByte) (charByte <= '9')
+isWhiteSpace = \charByte -> charByte == ' '
+
+byteToInt = \byte -> Num.toU32 (byte - '0')
+bytesToU32 = \digitBytes ->
+    len = List.len digitBytes
+    List.walkWithIndex digitBytes 0 \num, byte, i ->
+        byteDigitValue = byteToInt byte
+        power = Num.toU32 (len - 1 - i)
+        mult = Num.powInt 10 power
+        num + (mult * byteDigitValue)
+
+expect bytesToU32 ['1'] == 1
+expect bytesToU32 ['1', '2'] == 12
 
 uint32 = \_ ->
     \ctx ->
-        # This ain't right
-        trimmed = Str.trim ctx.prog
-        parseResult = trimmed |> Str.toU32
-        when parseResult is
-            Ok uint32Val ->
-                newCtx = advance ctx trimmed
+        { numberBytes, bytesEaten } = Str.walkScalarsUntil ctx.prog { numberBytes: [], bytesEaten: 0 } \state, byte ->
+            if isWhiteSpace byte then
+                Continue { state& bytesEaten: state.bytesEaten + 1 }
+            else if isDigit byte then
+                Continue { bytesEaten: state.bytesEaten + 1, numberBytes: List.append state.numberBytes byte }
+            else
+                Break state
+
+        when numberBytes is
+            [..] ->
+                uint32Val = bytesToU32 numberBytes
+                newCtx = advance ctx bytesEaten
                 TokenNumber { value: uint32Val, ctx: newCtx }
             _ -> ParseError ctx
 
@@ -35,7 +52,13 @@ progCtx = \prog -> { prog: prog, line: 0, col: 0 }
 expect 
     ctx = progCtx "23"
     parsedToken = ctx |> (uint32 Empty)
-    parsedToken == TokenNumber { value: 23, ctx: advance ctx "23" }
+    parsedToken == TokenNumber { value: 23, ctx: advance ctx 2 }
+
+## Check that we stop eating chars when there's a non digit
+expect
+    ctx = progCtx "111:"
+    parsedToken = ctx |> (uint32 Empty)
+    parsedToken == TokenNumber { value: 111, ctx: advance ctx 3 }
 
 parseGameId = \gamePart ->
     when Str.replaceFirst gamePart "Game " "" |> Str.toU32 is
@@ -43,12 +66,7 @@ parseGameId = \gamePart ->
         _ -> crash "Failed to parse gameId from partial line '\(gamePart)'"
 
 emptyDraw = { red: 0, green: 0, blue: 0 }
-# Draw : {
-#     red: Num U8,
-#     blue: Num U8,
-#     green: Num U8,
-# }
-# parseDraws: Str -> List Draw
+
 parseDraws = \drawsPart ->
     drawStrs = Str.split drawsPart "; "
     List.map drawStrs \drawStr ->
