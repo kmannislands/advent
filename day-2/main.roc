@@ -6,6 +6,32 @@ app "day-2-solution"
     ]
     provides [main] to pf
 
+# Ctx : {
+#     line: U8,
+#     col: U8,
+#     prog: Str,
+# }
+
+# advance: (Ctx, Int) -> Ctx
+# TODO: wrap lines
+advance = \ctx, eatStr ->
+    chars = Str.toUtf8 eatStr |> List.len 
+    { ctx& col: ctx.col + chars }
+
+uint32 = \_ ->
+    \ctx ->
+        trimmed = Str.trim ctx.prog
+        parseResult = trimmed |> Str.toU32
+        when parseResult is
+            Ok uint32Val ->
+                newCtx = advance ctx trimmed
+                TokenNumber { value: uint32Val, ctx: newCtx }
+            _ -> ParseError ctx
+
+expect 
+    parsedToken = ((uint32 Empty) { prog: "23", line: 0, col: 0 })
+    parsedToken == TokenNumber { value: 23, ctx: { prog: "23", line: 0, col: 2 } }
+
 parseGameId = \gamePart ->
     when Str.replaceFirst gamePart "Game " "" |> Str.toU32 is
         Ok gameIdInt -> gameIdInt
