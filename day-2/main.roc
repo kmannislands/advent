@@ -54,6 +54,12 @@ expect
     parsedToken = ctx |> (uint32 Empty)
     parsedToken == TokenNumber { value: 23, ctx: advance ctx 2 }
 
+## Check that we trim leading whitespace when parsing a number
+expect
+    ctx = progCtx "  420"
+    parsedToken = ctx |> (uint32 Empty)
+    parsedToken == TokenNumber { value: 420, ctx: advance ctx 5 }
+
 ## Check that we stop eating chars when there's a non digit
 expect
     ctx = progCtx "111:"
