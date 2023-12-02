@@ -32,28 +32,25 @@ overlapChars = 1
 ## Extract the relevant digits as a list from the line.
 getDigitsFromLine = \line ->
     digitsAcc = Str.walkUtf8 line { digits: [], lineBytes: [] } \acc, byte ->
-        # dbg acc
         if isDigit byte then
             { lineBytes: [], digits: List.append acc.digits (byteToInt byte) }
         else
             currentLineBytes = List.append acc.lineBytes byte
             digitValue = when currentLineBytes is
-                [.., 'z', 'e', 'r', 'o'] -> ParsedDigitWithLen 0 4
-                [.., 'o', 'n', 'e'] -> ParsedDigitWithLen 1 3
-                [.., 't', 'w', 'o'] -> ParsedDigitWithLen 2 3
-                [.., 't', 'h', 'r', 'e', 'e'] -> ParsedDigitWithLen 3 5
-                [.., 'f', 'o', 'u', 'r'] -> ParsedDigitWithLen 4 4
-                [.., 'f', 'i', 'v', 'e'] -> ParsedDigitWithLen 5 4
-                [.., 's', 'i', 'x'] -> ParsedDigitWithLen 6 3
-                [.., 's', 'e', 'v', 'e', 'n'] -> ParsedDigitWithLen 7 5
-                [.., 'e', 'i', 'g', 'h', 't'] -> ParsedDigitWithLen 8 5
-                [.., 'n', 'i', 'n', 'e'] -> ParsedDigitWithLen 9 4
+                [.., 'z', 'e', 'r', 'o'] -> ParsedDigitWithLen 0
+                [.., 'o', 'n', 'e'] -> ParsedDigitWithLen 1
+                [.., 't', 'w', 'o'] -> ParsedDigitWithLen 2
+                [.., 't', 'h', 'r', 'e', 'e'] -> ParsedDigitWithLen 3
+                [.., 'f', 'o', 'u', 'r'] -> ParsedDigitWithLen 4
+                [.., 'f', 'i', 'v', 'e'] -> ParsedDigitWithLen 5
+                [.., 's', 'i', 'x'] -> ParsedDigitWithLen 6
+                [.., 's', 'e', 'v', 'e', 'n'] -> ParsedDigitWithLen 7
+                [.., 'e', 'i', 'g', 'h', 't'] -> ParsedDigitWithLen 8
+                [.., 'n', 'i', 'n', 'e'] -> ParsedDigitWithLen 9
                 _ -> NoneParsed
             
-            # dbg (T digitValue)
-
             when digitValue is
-                ParsedDigitWithLen digit _len ->
+                ParsedDigitWithLen digit ->
                     updatedLineBytes = List.dropFirst currentLineBytes overlapChars
                     { lineBytes: updatedLineBytes, digits: List.append acc.digits digit }
                 _ -> { acc& lineBytes: currentLineBytes }
@@ -83,7 +80,7 @@ getLineDigitNumber = \listOfDigits ->
 
 main =
     fileSum = List.walk lines 0 \sum, line ->
-        lineSum = getDigitsFromLine line |> getLineDigitNumber
-        # dbg (T line "summed to" lineSum)
-        sum + lineSum
+        sum + (
+            getDigitsFromLine line |> getLineDigitNumber
+        )
     Num.toStr fileSum |> Stdout.line 
