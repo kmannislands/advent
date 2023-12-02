@@ -6,5 +6,23 @@ app "day-2-solution"
     ]
     provides [main] to pf
 
+parseGame = \gameLine ->
+    gameLinePieces = Str.split gameLine ": "
+
+    gamePart = when List.get gameLinePieces 0 is
+        Ok elem -> elem
+        _ -> crash "Couldn't parse gameLine \(gameLine)"
+    # draws = List.get gameLinePieces 0 |> Result.withDefault ""
+
+    gameId = when Str.replaceFirst gamePart "Game " "" |> Str.toU32 is
+        Ok gameIdInt -> gameIdInt
+        _ -> crash "Failed to parse gameId \(gameLine)"
+
+    { gameId: gameId }
+
+
 main =
-    Stdout.line sample
+    lines = Str.split sample "\n"
+    gameResults = List.map lines \line -> parseGame line
+    dbg gameResults
+    Stdout.line "done"
