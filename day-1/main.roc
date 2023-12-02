@@ -28,6 +28,22 @@ byteToInt = \byte -> Num.toU32 (byte - zeroByte)
 
 expect ('1' |> byteToInt) == 1
 
+## Given a (partial) string as bytes, parse out any digits that are spelled out at the end of the string,
+## returning ParsedDigitWithLen with the numeric value of the digit if successful, NoneParsed otherwise
+parseDigitFromStrEnd = \bytes ->
+    when bytes is
+        [.., 'z', 'e', 'r', 'o'] -> ParsedDigitWithLen 0
+        [.., 'o', 'n', 'e'] -> ParsedDigitWithLen 1
+        [.., 't', 'w', 'o'] -> ParsedDigitWithLen 2
+        [.., 't', 'h', 'r', 'e', 'e'] -> ParsedDigitWithLen 3
+        [.., 'f', 'o', 'u', 'r'] -> ParsedDigitWithLen 4
+        [.., 'f', 'i', 'v', 'e'] -> ParsedDigitWithLen 5
+        [.., 's', 'i', 'x'] -> ParsedDigitWithLen 6
+        [.., 's', 'e', 'v', 'e', 'n'] -> ParsedDigitWithLen 7
+        [.., 'e', 'i', 'g', 'h', 't'] -> ParsedDigitWithLen 8
+        [.., 'n', 'i', 'n', 'e'] -> ParsedDigitWithLen 9
+        _ -> NoneParsed
+
 ## Number of characters at the end of the spelling of one letter that could be used in the start of the next letter.
 ## ex: eighthree oneight
 ##         ^       ^
@@ -39,21 +55,8 @@ getDigitsFromLine = \line ->
         if isDigit byte then
             { lineBytes: [], digits: List.append acc.digits (byteToInt byte) }
         else
-            currentLineBytes = List.append acc.lineBytes byte
-            digitValue = when currentLineBytes is
-                [.., 'z', 'e', 'r', 'o'] -> ParsedDigitWithLen 0
-                [.., 'o', 'n', 'e'] -> ParsedDigitWithLen 1
-                [.., 't', 'w', 'o'] -> ParsedDigitWithLen 2
-                [.., 't', 'h', 'r', 'e', 'e'] -> ParsedDigitWithLen 3
-                [.., 'f', 'o', 'u', 'r'] -> ParsedDigitWithLen 4
-                [.., 'f', 'i', 'v', 'e'] -> ParsedDigitWithLen 5
-                [.., 's', 'i', 'x'] -> ParsedDigitWithLen 6
-                [.., 's', 'e', 'v', 'e', 'n'] -> ParsedDigitWithLen 7
-                [.., 'e', 'i', 'g', 'h', 't'] -> ParsedDigitWithLen 8
-                [.., 'n', 'i', 'n', 'e'] -> ParsedDigitWithLen 9
-                _ -> NoneParsed
-            
-            when digitValue is
+            currentLineBytes = List.append acc.lineBytes byte            
+            when parseDigitFromStrEnd currentLineBytes is
                 ParsedDigitWithLen digit ->
                     updatedLineBytes = List.dropFirst currentLineBytes overlapChars
                     { lineBytes: updatedLineBytes, digits: List.append acc.digits digit }
