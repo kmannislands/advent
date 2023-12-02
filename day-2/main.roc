@@ -52,7 +52,7 @@ isImpossibleGame = \game ->
     List.any game.draws \draw ->
         (draw.red > cubesInBag.red) || (draw.green > cubesInBag.green) || (draw.blue > cubesInBag.blue)
 
-findPossibleGames = \gameResults ->
+possibleGameIds = \gameResults ->
     List.walk gameResults [] \possibleSoFar, game ->
         if isImpossibleGame game then
             possibleSoFar
@@ -62,8 +62,6 @@ findPossibleGames = \gameResults ->
 main =
     lines = Str.split sample "\n"
     gameResults = List.map lines \line -> parseGame line
-    dbg gameResults
-    possibleGames = findPossibleGames gameResults
-    dbg possibleGames
+    possibleGames = possibleGameIds gameResults
     sumOfImpossibleIds = List.walk possibleGames 0 \total, gameId -> total + gameId
     Num.toStr sumOfImpossibleIds |> Stdout.line 
