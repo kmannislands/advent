@@ -17,6 +17,20 @@ advance = \ctx, chars ->
     # TODO: wrap lines
     { ctx& col: ctx.col + chars }
 
+lit = \litStr ->
+    litLen = Str.countUtf8Bytes litStr
+    \ctx ->
+        literalFound = Str.startsWith ctx.prog litStr
+        if literalFound then
+            TokenLit { value: litStr, ctx: advance ctx litLen }
+        else
+            ParseError ctx
+
+expect
+    ctx = progCtx "Game 1"
+    parsedToken = ctx |> (lit "Game")
+    parsedToken == TokenLit { value: "Game", ctx: advance ctx 4 }
+
 ## From Day 1: Given as ASCII byte, return whether its a valid digit
 isDigit = \charByte -> Bool.and ('0' <= charByte) (charByte <= '9')
 # We'll also want to know when a UTF8 code point byte is whitespace. For now, let's just worry about ` `
