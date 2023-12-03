@@ -18,18 +18,33 @@ advance = \ctx, chars ->
     { ctx& col: ctx.col + chars }
 
 lit = \litStr ->
-    litLen = Str.countUtf8Bytes litStr
+    litStrBytes = Str.toUtf8 litStr
     \ctx ->
-        literalFound = Str.startsWith ctx.prog litStr
-        if literalFound then
-            TokenLit { value: litStr, ctx: advance ctx litLen }
+        { matched, i } = Str.toUtf8 litStr |> List.walkUntil { matched: Bool.true, i: 0 } \state, byte ->
+            currentOffset = ctx.col + state.i
+            when List.get litStrBytes currentOffset is
+                Ok progByte ->
+                    if (progByte == byte) then
+                        Continue { state& i: state.i + 1 }
+                    else
+                        Break { state& matched: Bool.false }
+                _ -> Break { state& matched: Bool.false }
+        if matched then
+            TokenLit { value: litStr, ctx: advance ctx i }
         else
-            ParseError ctx
+            ParseError ctx "Couldn't find expected lit at offset \(Num.toStr i)"
 
+# Basic test
 expect
     ctx = progCtx "Game 1"
     parsedToken = ctx |> (lit "Game")
     parsedToken == TokenLit { value: "Game", ctx: advance ctx 4 }
+
+# It looks at the current context
+expect
+    ctx = progCtx "foobar"
+    parsedToken = (advance ctx 2) |> (lit "bar")
+    parsedToken == TokenLit { value: "bar", ctx: advance ctx 6 }
 
 ## From Day 1: Given as ASCII byte, return whether its a valid digit
 isDigit = \charByte -> Bool.and ('0' <= charByte) (charByte <= '9')
@@ -81,24 +96,24 @@ progCtx = \prog -> { prog: prog, line: 0, col: 0 }
 ## Simplest case -- pre-trimmed
 expect 
     ctx = progCtx "23"
-    parsedToken = ctx |> (uint32 Empty)
+    parsedToken = ctx |> (uint32 {})
     parsedToken == TokenNumber { value: 23, ctx: advance ctx 2 }
 
 ## Check that we trim leading whitespace when parsing a number
 expect
     ctx = progCtx "  420"
-    parsedToken = ctx |> (uint32 Empty)
+    parsedToken = ctx |> (uint32 {})
     parsedToken == TokenNumber { value: 420, ctx: advance ctx 5 }
 
 ## Check that we stop eating chars when there's a non digit
 expect
     ctx = progCtx "111:"
-    parsedToken = ctx |> (uint32 Empty)
+    parsedToken = ctx |> (uint32 {})
     parsedToken == TokenNumber { value: 111, ctx: advance ctx 3 }
 
 expect
     ctx = progCtx "2 3"
-    parsedToken = ctx |> (uint32 Empty)
+    parsedToken = ctx |> (uint32 {})
     parsedToken == TokenNumber { value: 2, ctx: advance ctx 1 }
 
 parseGameId = \gamePart ->
