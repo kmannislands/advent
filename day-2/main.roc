@@ -18,21 +18,17 @@ advance = \ctx, chars ->
     { ctx& col: ctx.col + chars }
 
 lit = \litStr ->
-    litStrBytes = Str.toUtf8 litStr
+    litLen = Str.countUtf8Bytes litStr
     \ctx ->
-        { matched, i } = Str.toUtf8 litStr |> List.walkUntil { matched: Bool.true, i: 0 } \state, byte ->
-            currentOffset = ctx.col + state.i
-            when List.get litStrBytes currentOffset is
-                Ok progByte ->
-                    if (progByte == byte) then
-                        Continue { state& i: state.i + 1 }
-                    else
-                        Break { state& matched: Bool.false }
-                _ -> Break { state& matched: Bool.false }
+        subStr = Str.toUtf8 ctx.prog
+            |> List.dropFirst ctx.col
+            |> Str.fromUtf8
+            |> Result.withDefault ""
+        matched = Str.startsWith subStr litStr 
         if matched then
-            TokenLit { value: litStr, ctx: advance ctx i }
+            TokenLit { value: litStr, ctx: advance ctx litLen }
         else
-            ParseError ctx "Couldn't find expected lit at offset \(Num.toStr i)"
+            ParseError ctx "Couldn't find expected lit '\(litStr)' at offset \(Num.toStr ctx.col)"
 
 # Basic test
 expect
@@ -43,7 +39,7 @@ expect
 # It looks at the current context
 expect
     ctx = progCtx "foobar"
-    parsedToken = (advance ctx 2) |> (lit "bar")
+    parsedToken = (advance ctx 3) |> (lit "bar")
     parsedToken == TokenLit { value: "bar", ctx: advance ctx 6 }
 
 ## From Day 1: Given as ASCII byte, return whether its a valid digit
