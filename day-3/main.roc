@@ -30,14 +30,18 @@ bytesToU32 = \digitBytes ->
         mult = Num.powInt 10 power
         num + (mult * byteDigitValue)
 
+Number : {
+    col: U8,
+    line: U8,
+    value: U32
+}
 
 # Let's start by writing the high level reducer
 ParserState : {
     col: U8,
     line: U8,
     digitBytes: List U8,
-    # TODO: needs line/col
-    numbers: List U32,
+    numbers: List Number,
     # symbols: Set List Nat
 }
 
@@ -55,10 +59,11 @@ finishNumber : ParserState -> ParserState
 finishNumber = \state ->
     if List.len state.digitBytes > 0 then
         parsedNum = bytesToU32 state.digitBytes
+        num = { line: state.line, col: state.col, value: parsedNum }
         {
             state&
             digitBytes: [],
-            numbers: List.append state.numbers parsedNum
+            numbers: List.append state.numbers num
         }
     else
         state
@@ -85,8 +90,23 @@ reduce = \privateState, byte ->
             # We have a character, add its coordinates to the set
             newState
 
+ParseResult : {
+    numbers: List Number,
+    # symbols: Set List Nat
+}
+
+parseSchematic : List U8 -> ParseResult
+parseSchematic = \schematic ->
+    parsed = List.walk schematic initialState reduce
+    { numbers: parsed.numbers }
+
+expect
+    { numbers } = parseSchematic sample
+    List.map numbers .value == [467, 114, 35, 633, 617, 58, 592, 755, 664, 598]
+
+
 main =
-    parsed = List.walk sample initialState reduce
+    parsed = parseSchematic sample
 
     dbg parsed
 
