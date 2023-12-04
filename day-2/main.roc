@@ -145,19 +145,20 @@ seq = \parsers, mapResult ->
                 Ok lastParsed -> mapResult seqResult.parsed lastParsed.ctx
                 _ -> crash "Parser Combinator declaration error: parsed without error yet got an empty sequence"
 
+# Grab just the game id part, throwing out everything else
+grabGameid = \parsedTokens, lastCtx ->
+        when List.get parsedTokens 1 is
+            Ok v -> Token { type: GameId, value: v.value, ctx: lastCtx  }
+            _ -> crash "Invariant violated: parsed game id but didn't have a valid gameid token"
+
 gameIdParser = seq
     [
+        # here we declare the structure of game id
         (lit "Game"),
         (uint32 {}),
         (lit ":"),
     ]
-    \parsedTokens, lastCtx ->
-        when List.get parsedTokens 1 is
-            Ok v -> Token { type: GameId, value: v.value, ctx: lastCtx  }
-            _ -> crash "Invariant violated: parsed game id but didn't have a valid gameid token"
-        
-    # |> map \{ value, ctx } ->
-    #     # Grab just the game id part, throwing out everything else
+    grabGameid
 
 expect
     ctx = progCtx "Game 420:"
