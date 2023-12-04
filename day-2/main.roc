@@ -125,7 +125,7 @@ expect
 ##    (lit ":")
 ## ]
 
-seq = \parsers ->
+seq = \parsers, mapResult ->
     \ctx ->
         init = { errored: Bool.false, parsed: [], error: ParseError ctx "No seq" }
         seqResult = List.walkUntil parsers init \state, parser ->
@@ -142,37 +142,28 @@ seq = \parsers ->
             seqResult.error
         else
             when List.last seqResult.parsed is
-                Ok lastParsed -> Token { value: seqResult.parsed, ctx: lastParsed.ctx }
-                _ -> ParseError ctx "Parsed without error yet got an empty sequence"
+                Ok lastParsed -> mapResult seqResult.parsed lastParsed.ctx
+                _ -> crash "Parser Combinator declaration error: parsed without error yet got an empty sequence"
 
-map = \parser, mapResult ->
-    \ctx ->
-        parseResult = parser ctx
-        when parseResult is
-            Token v -> mapResult v
-            ParseError errorCtx reason -> ParseError errorCtx reason
-
-gameIdParser = seq [
-   (lit "Game"),
-   (uint32 {}),
-   (lit ":"),
-]
+gameIdParser = seq
+    [
+        (lit "Game"),
+        (uint32 {}),
+        (lit ":"),
+    ]
+    \parsedTokens, lastCtx ->
+        when List.get parsedTokens 1 is
+            Ok v -> Token { value: v.value, ctx: lastCtx  }
+            _ -> crash "Invariant violated: parsed game id but didn't have a valid gameid token"
+        
     # |> map \{ value, ctx } ->
     #     # Grab just the game id part, throwing out everything else
-    #     when List.get value 1 is
-    #         Ok v -> v
-    #         _ -> crash "Invariant violated: parsed game id but didn't have a valid gameid token"
-    
 
 expect
     ctx = progCtx "Game 420:"
     parsedToken = gameIdParser ctx
     parsedToken ==  Token {
-        value: [
-            { value: 0, ctx: advance ctx 4 },
-            { value: 420, ctx: advance ctx 8 },
-            { value: 0, ctx: advance ctx 9 }
-        ],
+        value: 420,
         ctx: advance ctx 9
     }
 
