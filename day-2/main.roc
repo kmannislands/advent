@@ -68,7 +68,8 @@ uint32 = \_ ->
         # Walk the program as bytes, skipping white space, accumulating character code points if they are a
         # digit to later convert to an actual roc number and stopping if we encounter a character that
         # couldn't be part of a number
-        { numberBytes, bytesEaten } = Str.walkScalarsUntil ctx.prog { numberBytes: [], bytesEaten: 0 } \state, byte ->
+        progBytes = Str.toUtf8 ctx.prog |> List.dropFirst ctx.col
+        { numberBytes, bytesEaten } = List.walkUntil progBytes { numberBytes: [], bytesEaten: 0 } \state, byte ->
             if isWhiteSpace byte then
                 # "Trim" whitespace off the start of a number but end if we have already started parsing a num
                 if (List.len state.numberBytes) == 0 then
@@ -144,20 +145,33 @@ seq = \parsers ->
                 Ok lastParsed -> Token { value: seqResult.parsed, ctx: lastParsed.ctx }
                 _ -> ParseError ctx "Parsed without error yet got an empty sequence"
 
+map = \parser, mapResult ->
+    \ctx ->
+        parseResult = parser ctx
+        when parseResult is
+            Token v -> mapResult v
+            ParseError errorCtx reason -> ParseError errorCtx reason
+
 gameIdParser = seq [
    (lit "Game"),
    (uint32 {}),
    (lit ":"),
 ]
+    # |> map \{ value, ctx } ->
+    #     # Grab just the game id part, throwing out everything else
+    #     when List.get value 1 is
+    #         Ok v -> v
+    #         _ -> crash "Invariant violated: parsed game id but didn't have a valid gameid token"
+    
 
 expect
     ctx = progCtx "Game 420:"
     parsedToken = gameIdParser ctx
     parsedToken ==  Token {
         value: [
-            { value: 0, ctx },
-            { value: 420, ctx },
-            { value: 0, ctx }
+            { value: 0, ctx: advance ctx 4 },
+            { value: 420, ctx: advance ctx 8 },
+            { value: 0, ctx: advance ctx 9 }
         ],
         ctx: advance ctx 9
     }
