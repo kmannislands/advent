@@ -111,6 +111,29 @@ parseSchematic = \schematic ->
     parsed = List.walk schematic initialState reduce
     { numbers: parsed.numbers, symbols: parsed.symbols }
 
+## Given the position information about a number, determine a list of coordinates to check for the presence of a symbol
+symbolCoordCandidates : Number -> List (List U8)
+symbolCoordCandidates = \num ->
+    rowStart = Num.subChecked num.line 1 |> Result.withDefault 0
+    # TODO: We're potentially going past the end of the input but that shouldn't crash
+    rowEnd = num.line + 1
+
+    rowsToCheck = List.range { start: At rowStart, end: At rowEnd }
+
+    colStart = Num.subChecked num.col 1 |> Result.withDefault 0
+    colEnd = num.col + num.length
+
+    colsToCheck = List.range { start: At colStart, end: At colEnd }
+
+    # cartesian product
+    List.joinMap rowsToCheck \rowIdx ->
+        List.map colsToCheck \colIdx ->
+            [rowIdx, colIdx]
+
+expect
+    candidates = symbolCoordCandidates { col: 0, line: 0, length: 1, value: 9 }
+    candidates == [[0, 0], [0, 1], [1, 0], [1, 1]]
+
 expect
     { numbers } = parseSchematic sample
     List.map numbers .value == [467, 114, 35, 633, 617, 58, 592, 755, 664, 598]
