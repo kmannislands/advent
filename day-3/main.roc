@@ -130,6 +130,14 @@ symbolCoordCandidates = \num ->
         List.map colsToCheck \colIdx ->
             [rowIdx, colIdx]
 
+validPartNumbers : ParseResult -> List U32
+validPartNumbers = \{ numbers, symbols } ->
+    List.keepIf numbers \num ->
+        coordinatesToCheck = symbolCoordCandidates num
+        List.any coordinatesToCheck \coord ->
+            Set.contains symbols coord
+    |> List.map .value
+
 expect
     candidates = symbolCoordCandidates { col: 0, line: 0, length: 1, value: 9 }
     candidates == [[0, 0], [0, 1], [1, 0], [1, 1]]
@@ -143,4 +151,10 @@ main =
 
     dbg parsed
 
-    Stdout.line "All done!"
+    partNumbers = validPartNumbers parsed
+
+    dbg partNumbers
+
+    sum = List.walk partNumbers 0 \runningSum, partNum -> runningSum + partNum
+
+    Stdout.line "All done! Part numbers summed to \(Num.toStr sum)"
