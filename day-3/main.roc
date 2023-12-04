@@ -31,8 +31,13 @@ bytesToU32 = \digitBytes ->
         num + (mult * byteDigitValue)
 
 Number : {
-    col: U8,
+    # The line that the number is on
     line: U8,
+    # The column that the number started in
+    col: U8,
+    # How many characters did the number use
+    length: U8,
+    # Actual parsed value of the number to use in sum later
     value: U32
 }
 
@@ -57,9 +62,11 @@ initialState = {
 ## TODO: Update to store line/col snapshot
 finishNumber : ParserState -> ParserState
 finishNumber = \state ->
-    if List.len state.digitBytes > 0 then
+    countBytes = List.len state.digitBytes |> Num.toU8
+    if countBytes > 0 then
         parsedNum = bytesToU32 state.digitBytes
-        num = { line: state.line, col: state.col, value: parsedNum }
+        startCol = state.col - 1 - countBytes
+        num = { line: state.line, col: startCol, length: countBytes, value: parsedNum }
         {
             state&
             digitBytes: [],
@@ -72,7 +79,7 @@ finishNumber = \state ->
 # Any more complicated and we'll need a state machine, eh?
 reduce: ParserState, U8 -> ParserState
 reduce = \privateState, byte ->
-    state = { privateState& line: privateState.line + 1 }
+    state = { privateState& col: privateState.col + 1 }
     if isDigit byte then
         # Push to digitBytes
         { state& digitBytes: List.append state.digitBytes byte }
@@ -85,7 +92,7 @@ reduce = \privateState, byte ->
             newState
         else if isNewline byte then
             # Advance column, reset line
-            newState
+            { newState& line: newState.line + 1, col: 0 }
         else 
             # We have a character, add its coordinates to the set
             newState
@@ -103,7 +110,6 @@ parseSchematic = \schematic ->
 expect
     { numbers } = parseSchematic sample
     List.map numbers .value == [467, 114, 35, 633, 617, 58, 592, 755, 664, 598]
-
 
 main =
     parsed = parseSchematic sample
