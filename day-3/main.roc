@@ -2,7 +2,7 @@ app "day-2-solution"
     packages { pf: "https://github.com/roc-lang/basic-cli/releases/download/0.7.0/bkGby8jb0tmZYsy2hg1E_B2QrCgcSTxdUlHtETwm5m4.tar.br" }
     imports [
         pf.Stdout,
-        "test.txt" as sample : List U8,
+        "input.txt" as sample : List U8,
     ]
     provides [main] to pf
 
@@ -112,6 +112,7 @@ parseSchematic = \schematic ->
     { numbers: parsed.numbers, symbols: parsed.symbols }
 
 ## Given the position information about a number, determine a list of coordinates to check for the presence of a symbol
+## TODO: perf: we're checking digit cells and cells that go past the end of the input
 symbolCoordCandidates : Number -> List (List U8)
 symbolCoordCandidates = \num ->
     rowStart = Num.subChecked num.line 1 |> Result.withDefault 0
