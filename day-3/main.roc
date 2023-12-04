@@ -16,6 +16,7 @@ app "day-2-solution"
 isDigit = \charByte -> Bool.and ('0' <= charByte) (charByte <= '9')
 isPeriod = \charByte -> charByte == '.'
 isNewline = \charByte -> charByte == '\n'
+isStar = \charByte -> charByte == '*'
 
 # Also from day 1.
 byteToInt = \byte -> Num.toU32 (byte - '0')
@@ -50,7 +51,8 @@ ParserState : {
     digitBytes: List U8,
     numbers: List Number,
     # Set of coordinates (line, col) that contain symbols
-    symbols: Set (List U8)
+    otherSymbols: Set (List U8),
+    gears: Set (List U8)
 }
 
 initialState : ParserState
@@ -59,7 +61,8 @@ initialState = {
     line: 0,
     digitBytes: [],
     numbers: [],
-    symbols: Set.empty {}
+    otherSymbols: Set.empty {},
+    gears: Set.empty {}
 }
 
 ## Update the state when we are done with a number (encounter a non-digit character).
@@ -96,20 +99,26 @@ reduce = \state, byte ->
         else if isNewline byte then
             # Advance column, reset line
             { newState& line: newState.line + 1, col: 0 }
-        else 
-            # We have a character, add its coordinates to the set
-            symbols = Set.insert newState.symbols [newState.line, newState.col]
-            { newState& symbols, col: newState.col + 1 }
+        else
+            symbolCoord = [newState.line, newState.col]
+            if isStar byte then
+                gears = Set.insert newState.gears symbolCoord
+                { newState& gears, col: newState.col + 1 }
+            else
+                # We have a non-gear, add its coordinates to the set
+                otherSymbols = Set.insert newState.otherSymbols symbolCoord
+                { newState& otherSymbols, col: newState.col + 1 }
 
 ParseResult : {
     numbers: List Number,
-    symbols: Set (List U8)
+    otherSymbols: Set (List U8),
+    gears: Set (List U8),
 }
 
 parseSchematic : List U8 -> ParseResult
 parseSchematic = \schematic ->
     parsed = List.walk schematic initialState reduce
-    { numbers: parsed.numbers, symbols: parsed.symbols }
+    { numbers: parsed.numbers, otherSymbols: parsed.otherSymbols, gears: parsed.gears }
 
 ## Given the position information about a number, determine a list of coordinates to check for the presence of a symbol
 ## TODO: perf: we're checking digit cells and cells that go past the end of the input
@@ -132,7 +141,8 @@ symbolCoordCandidates = \num ->
             [rowIdx, colIdx]
 
 validPartNumbers : ParseResult -> List U32
-validPartNumbers = \{ numbers, symbols } ->
+validPartNumbers = \{ numbers, otherSymbols, gears } ->
+    symbols = Set.union otherSymbols gears
     List.keepIf numbers \num ->
         coordinatesToCheck = symbolCoordCandidates num
         List.any coordinatesToCheck \coord ->
@@ -147,6 +157,11 @@ expect
     { numbers } = parseSchematic sample
     List.map numbers .value == [467, 114, 35, 633, 617, 58, 592, 755, 664, 598]
 
+## Part II: We now need to know if the number is adjacent to a gear specifically.
+## To do this, we should:
+##  - keep track of whether a symbol is a gear
+##  - when computing what numbers are adjacent to what symbols, also uniquely identify the symbol (through its coord)
+##  - Perhaps we do this by building a dictionary like: Dict<GearCoord, List Number> { [0, 0]: [234, 567] }
 main =
     parsed = parseSchematic sample
 
