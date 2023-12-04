@@ -58,14 +58,14 @@ reduce = \privateState, byte ->
         { state& digitBytes: List.append state.digitBytes byte }
     else
         # If there are digitsBytes, finish them and push a number regardless of what comes next
-        # TODO: this is going to push extra 0s really often (think every period character)
-        # doesn't matter for the program at hand since we're summing but it will be a huge perf drag
-        parsedNum = bytesToU32 state.digitBytes
-        newState = {
-            state&
-            digitBytes: [],
-            numbers: List.append state.numbers parsedNum
-        }
+        # The fact that we've hit any non-digit char means we're done with the number
+        newState = if List.len state.digitBytes > 0 then
+            parsedNum = bytesToU32 state.digitBytes
+            {
+                state&
+                digitBytes: [],
+                numbers: List.append state.numbers parsedNum
+            } else  state
         if isPeriod byte then
             # Advance line
             newState
