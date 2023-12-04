@@ -17,15 +17,18 @@ advance = \ctx, chars ->
     # TODO: wrap lines
     { ctx& col: ctx.col + chars }
 
+subProg = \ctx ->
+    Str.toUtf8 ctx.prog
+        |> List.dropFirst ctx.col
+        |> Str.fromUtf8
+        # Seems fine not to handle the utf8 conversion error here since we just got the bytes from a str
+        |> Result.withDefault ""
+
 lit = \litStr ->
     litLen = Str.countUtf8Bytes litStr
     \ctx ->
         # TODO this could be faster with a walkScalarsUntil
-        subStr = Str.toUtf8 ctx.prog
-            |> List.dropFirst ctx.col
-            |> Str.fromUtf8
-            # Seems fine not to handle the utf8 conversion error here since we just got the bytes from a str
-            |> Result.withDefault ""
+        subStr = subProg ctx
         matched = Str.startsWith subStr litStr 
         if matched then
             Token { type: Lit, value: 0, ctx: advance ctx litLen }
@@ -169,57 +172,54 @@ expect
         ctx: advance ctx 9
     }
 
-parseGameId = \gamePart ->
-    when Str.replaceFirst gamePart "Game " "" |> Str.toU32 is
-        Ok gameIdInt -> gameIdInt
-        _ -> crash "Failed to parse gameId from partial line '\(gamePart)'"
+delimitedProg = \delimiterChar, parser ->
+    \ctx ->
+        subStr = subProg ctx
+        Str.split subStr delimiterChar |> List.map \portion ->
+            subCtx = progCtx portion
+            parser subCtx
 
-emptyDraw = { red: 0, green: 0, blue: 0 }
+allGameResults = delimitedProg "\n" gameIdParser
 
-parseDraws = \drawsPart ->
-    drawStrs = Str.split drawsPart "; "
-    List.map drawStrs \drawStr ->
-        draws = Str.split drawStr ", "
-        List.walk draws emptyDraw \result, colorResult ->
-            when Str.split colorResult " " is
-                [numberStr, colorStr] ->
-                    drawForColor = when Str.toU32 numberStr is
-                        Ok value -> value
-                        _ -> crash "Couldn't parse out draw for color '\(colorStr)'"
-                    when colorStr is
-                        "red" -> { result& red: drawForColor}
-                        "blue" -> { result& blue: drawForColor}
-                        "green" -> { result& green: drawForColor}
-                        _ -> crash "Unrecognized Color '\(colorStr)' in 'colorResult"
-            
-                _ -> crash "Couldn't parse number and count out of draw piece \(drawStr)"
+# expect
+#     ctx = progCtx "Game 420:\nGame 900:"
+#     parsedToken = gameIdParser ctx
+#     parsedToken ==  [
+#         Token {
+#             type: GameId,
+#             value: 420,
+#             ctx: advance ctx 9
+#         },
+#         Token {
+#             type: GameId,
+#             value: 900,
+#             ctx: advance ctx 19
+#         }
+#     ]
 
-parseGame = \gameLine ->
-    gameLinePieces = Str.split gameLine ": "
-    when gameLinePieces is
-        [gamePart, drawsPart] -> { gameId: parseGameId gamePart, draws: parseDraws drawsPart }
-        _ -> crash "Couldn't parse gameLine \(gameLine)"
+# cubesInBag = {
+#     red: 12,
+#     green: 13,
+#     blue: 14
+# }
 
-cubesInBag = {
-    red: 12,
-    green: 13,
-    blue: 14
-}
+# isImpossibleGame = \game ->
+#     List.any game.draws \draw ->
+#         (draw.red > cubesInBag.red) || (draw.green > cubesInBag.green) || (draw.blue > cubesInBag.blue)
 
-isImpossibleGame = \game ->
-    List.any game.draws \draw ->
-        (draw.red > cubesInBag.red) || (draw.green > cubesInBag.green) || (draw.blue > cubesInBag.blue)
-
-possibleGameIds = \gameResults ->
-    List.walk gameResults [] \possibleSoFar, game ->
-        if isImpossibleGame game then
-            possibleSoFar
-        else
-            List.append possibleSoFar game.gameId
+# possibleGameIds = \gameResults ->
+#     List.walk gameResults [] \possibleSoFar, game ->
+#         if isImpossibleGame game then
+#             possibleSoFar
+#         else
+#             List.append possibleSoFar game.gameId
 
 main =
-    lines = Str.split sample "\n"
-    gameResults = List.map lines \line -> parseGame line
-    possibleGames = possibleGameIds gameResults
-    sumOfImpossibleIds = List.walk possibleGames 0 \total, gameId -> total + gameId
-    Num.toStr sumOfImpossibleIds |> Stdout.line 
+    gamesProgCtx = progCtx sample
+    gameResults = allGameResults gamesProgCtx
+    # possibleGames = possibleGameIds gameResults
+    # sumOfImpossibleIds = List.walk possibleGames 0 \total, gameId -> total + gameId
+    # Num.toStr sumOfImpossibleIds |> Stdout.line 
+    dbg gameResults
+    dbg "After"
+    Stdout.line "Done!"
