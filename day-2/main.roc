@@ -28,7 +28,7 @@ lit = \litStr ->
             |> Result.withDefault ""
         matched = Str.startsWith subStr litStr 
         if matched then
-            Token { value: 0, ctx: advance ctx litLen }
+            Token { type: Lit, value: 0, ctx: advance ctx litLen }
         else
             ParseError ctx "Couldn't find expected lit '\(litStr)' at offset \(Num.toStr ctx.col)"
 
@@ -36,13 +36,13 @@ lit = \litStr ->
 expect
     ctx = progCtx "Game 1"
     parsedToken = ctx |> (lit "Game")
-    parsedToken == Token { value: 0, ctx: advance ctx 4 }
+    parsedToken == Token { type: Lit, value: 0, ctx: advance ctx 4 }
 
 # It looks at the current context correctly
 expect
     ctx = progCtx "foobar"
     parsedToken = (advance ctx 3) |> (lit "bar")
-    parsedToken == Token { value: 0, ctx: advance ctx 6 }
+    parsedToken == Token { type: Lit, value: 0, ctx: advance ctx 6 }
 
 ## From Day 1: Given as ASCII byte, return whether its a valid digit
 isDigit = \charByte -> Bool.and ('0' <= charByte) (charByte <= '9')
@@ -87,7 +87,7 @@ uint32 = \_ ->
             [..] ->
                 uint32Val = bytesToU32 numberBytes
                 newCtx = advance ctx bytesEaten
-                Token { value: uint32Val, ctx: newCtx }
+                Token { type: Number, value: uint32Val, ctx: newCtx }
             _ -> ParseError ctx "Couldn't parse a number"
 
 progCtx = \prog -> { prog: prog, line: 0, col: 0 }
@@ -96,24 +96,24 @@ progCtx = \prog -> { prog: prog, line: 0, col: 0 }
 expect 
     ctx = progCtx "23"
     parsedToken = ctx |> (uint32 {})
-    parsedToken == Token { value: 23, ctx: advance ctx 2 }
+    parsedToken == Token { type: Number, value: 23, ctx: advance ctx 2 }
 
 ## Check that we trim leading whitespace when parsing a number
 expect
     ctx = progCtx "  420"
     parsedToken = ctx |> (uint32 {})
-    parsedToken == Token { value: 420, ctx: advance ctx 5 }
+    parsedToken == Token { type: Number, value: 420, ctx: advance ctx 5 }
 
 ## Check that we stop eating chars when there's a non digit
 expect
     ctx = progCtx "111:"
     parsedToken = ctx |> (uint32 {})
-    parsedToken == Token { value: 111, ctx: advance ctx 3 }
+    parsedToken == Token { type: Number, value: 111, ctx: advance ctx 3 }
 
 expect
     ctx = progCtx "2 3"
     parsedToken = ctx |> (uint32 {})
-    parsedToken == Token { value: 2, ctx: advance ctx 1 }
+    parsedToken == Token { type: Number, value: 2, ctx: advance ctx 1 }
 
 ## Now let's write out first combinator to represent tokens in order
 ##
@@ -153,7 +153,7 @@ gameIdParser = seq
     ]
     \parsedTokens, lastCtx ->
         when List.get parsedTokens 1 is
-            Ok v -> Token { value: v.value, ctx: lastCtx  }
+            Ok v -> Token { type: GameId, value: v.value, ctx: lastCtx  }
             _ -> crash "Invariant violated: parsed game id but didn't have a valid gameid token"
         
     # |> map \{ value, ctx } ->
@@ -163,6 +163,7 @@ expect
     ctx = progCtx "Game 420:"
     parsedToken = gameIdParser ctx
     parsedToken ==  Token {
+        type: GameId,
         value: 420,
         ctx: advance ctx 9
     }
