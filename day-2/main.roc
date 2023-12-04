@@ -154,7 +154,7 @@ grabGameid = \parsedTokens, lastCtx ->
             Ok v -> Token { type: GameId, value: v.value, ctx: lastCtx  }
             _ -> crash "Invariant violated: parsed game id but didn't have a valid gameid token"
 
-gameIdParser = seq
+gameId = seq
     [
         # here we declare the structure of game id
         (lit "Game"),
@@ -165,25 +165,35 @@ gameIdParser = seq
 
 expect
     ctx = progCtx "Game 420:"
-    parsedToken = gameIdParser ctx
+    parsedToken = gameId ctx
     parsedToken ==  Token {
         type: GameId,
         value: 420,
         ctx: advance ctx 9
     }
 
-delimitedProg = \delimiterChar, parser ->
+combineGameTokens = \gameTokens, lastCtx ->
+    when gameTokens is
+        # Combine gameId, draw results into a record here
+        [v, ..] -> Token { type: GameResult, value: v.value, ctx: lastCtx  }
+        _ -> crash "Unimplemented"
+
+gameResult = seq [gameId] combineGameTokens
+
+delimitedProg = \delimiterChar, parser, tokenType ->
     \ctx ->
         subStr = subProg ctx
-        Str.split subStr delimiterChar |> List.map \portion ->
+        value = Str.split subStr delimiterChar |> List.map \portion ->
+            # Include some mechanism to set the ctx externally to handle advancing lines
             subCtx = progCtx portion
             parser subCtx
+        Token { type: tokenType, value, ctx }
 
-allGameResults = delimitedProg "\n" gameIdParser
+allGameResults = delimitedProg "\n" gameResult GameResults
 
 # expect
 #     ctx = progCtx "Game 420:\nGame 900:"
-#     parsedToken = gameIdParser ctx
+#     parsedToken = gameId ctx
 #     parsedToken ==  [
 #         Token {
 #             type: GameId,
