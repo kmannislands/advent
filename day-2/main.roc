@@ -172,13 +172,16 @@ expect
         ctx: advance ctx 9
     }
 
-blueDraw = seq [
-    uint32 {},
-    lit " blue",
-] \parsedTokens, lastCtx ->
-    when List.get parsedTokens 0 is
-            Ok v -> Token { type: BlueDraw, value: v.value, ctx: lastCtx  }
-            _ -> crash "Invariant violated: parsed a blue draw but didn't get at least one token"
+colorDraw = \colorName, type ->
+    seq [
+        uint32 {},
+        lit " \(colorName)",
+    ] \parsedTokens, lastCtx ->
+        when List.get parsedTokens 0 is
+                Ok v -> Token { type: type, value: v.value, ctx: lastCtx  }
+                _ -> crash "Invariant violated: parsed a \(colorName) draw but didn't get at least one token"
+
+blueDraw = colorDraw "blue" BlueDraw
 
 expect
     ctx = progCtx "4 blue"
