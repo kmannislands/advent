@@ -172,6 +172,23 @@ expect
         ctx: advance ctx 9
     }
 
+blueDraw = seq [
+    uint32 {},
+    lit " blue",
+] \parsedTokens, lastCtx ->
+    when List.get parsedTokens 0 is
+            Ok v -> Token { type: BlueDraw, value: v.value, ctx: lastCtx  }
+            _ -> crash "Invariant violated: parsed a blue draw but didn't get at least one token"
+
+expect
+    ctx = progCtx "4 blue"
+    parsedToken = blueDraw ctx
+    parsedToken ==  Token {
+        type: BlueDraw,
+        value: 4,
+        ctx: advance ctx 6
+    }
+
 combineGameTokens = \gameTokens, lastCtx ->
     when gameTokens is
         # Combine gameId, draw results into a record here
