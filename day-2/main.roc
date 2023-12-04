@@ -181,6 +181,8 @@ colorDraw = \colorName, type ->
                 Ok v -> Token { type: type, value: v.value, ctx: lastCtx  }
                 _ -> crash "Invariant violated: parsed a \(colorName) draw but didn't get at least one token"
 
+redDraw = colorDraw "red" RedDraw
+greenDraw = colorDraw "green" GreenDraw
 blueDraw = colorDraw "blue" BlueDraw
 
 expect
@@ -190,6 +192,33 @@ expect
         type: BlueDraw,
         value: 4,
         ctx: advance ctx 6
+    }
+
+## Now we need another combinator to combine our rgb draw parsers and return a result if one of them "worked"
+oneOf = \parsers ->
+    \ctx ->
+        allParseResults = List.map parsers \parser -> parser ctx 
+        firstSuccessfulParse = List.findFirst allParseResults \parseResult ->
+            when parseResult is
+                Token -> Bool.true
+                _ -> Bool.false
+        when firstSuccessfulParse is
+            Result r -> r
+            _ -> ParseError ctx "Couldn't find any of the expected options in oneOf"
+
+draw = oneOf [
+    redDraw,
+    greenDraw,
+    blueDraw
+]
+
+expect
+    ctx = progCtx "67 green"
+    parsedToken = draw ctx
+    parsedToken ==  Token {
+        type: GreenDraw,
+        value: 67,
+        ctx: advance ctx 7
     }
 
 combineGameTokens = \gameTokens, lastCtx ->
