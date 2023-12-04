@@ -120,6 +120,10 @@ parseSchematic = \schematic ->
     parsed = List.walk schematic initialState reduce
     { numbers: parsed.numbers, otherSymbols: parsed.otherSymbols, gears: parsed.gears }
 
+expect
+    { numbers } = parseSchematic sample
+    List.map numbers .value == [467, 114, 35, 633, 617, 58, 592, 755, 664, 598]
+
 ## Given the position information about a number, determine a list of coordinates to check for the presence of a symbol
 ## TODO: perf: we're checking digit cells and cells that go past the end of the input
 symbolCoordCandidates : Number -> List (List U8)
@@ -139,6 +143,9 @@ symbolCoordCandidates = \num ->
     List.joinMap rowsToCheck \rowIdx ->
         List.map colsToCheck \colIdx ->
             [rowIdx, colIdx]
+expect
+    candidates = symbolCoordCandidates { col: 0, line: 0, length: 1, value: 9 }
+    candidates == [[0, 0], [0, 1], [1, 0], [1, 1]]
 
 validPartNumbers : ParseResult -> List U32
 validPartNumbers = \{ numbers, otherSymbols, gears } ->
@@ -149,13 +156,17 @@ validPartNumbers = \{ numbers, otherSymbols, gears } ->
             Set.contains symbols coord
     |> List.map .value
 
-expect
-    candidates = symbolCoordCandidates { col: 0, line: 0, length: 1, value: 9 }
-    candidates == [[0, 0], [0, 1], [1, 0], [1, 1]]
-
-expect
-    { numbers } = parseSchematic sample
-    List.map numbers .value == [467, 114, 35, 633, 617, 58, 592, 755, 664, 598]
+# Dictionary mapping from the gear coordinates to the numbers associated with the gear
+GearRatios : Dict (List U8) (List U32)
+gearRatios : ParseResult -> GearRatios
+gearRatios = \{ numbers, gears } ->
+    List.walk numbers (Dict.empty {}) \gearDict, number ->
+        coordsToCheck = symbolCoordCandidates number
+        coordinatesWithGears = List.keepIf coordsToCheck \potentialGearCoord ->
+            Set.contains gears potentialGearCoord
+        List.walk coordinatesWithGears gearDict \gd, gearCoord ->
+            existingGearNums = Dict.get gd gearCoord |> Result.withDefault []
+            Dict.insert gd gearCoord (List.append existingGearNums number.value)
 
 ## Part II: We now need to know if the number is adjacent to a gear specifically.
 ## To do this, we should:
@@ -170,6 +181,10 @@ main =
     partNumbers = validPartNumbers parsed
 
     dbg partNumbers
+
+    allGearRatios = gearRatios parsed
+
+    dbg allGearRatios
 
     sum = List.walk partNumbers 0 \runningSum, partNum -> runningSum + partNum
 
