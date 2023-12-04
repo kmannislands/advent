@@ -168,6 +168,14 @@ gearRatios = \{ numbers, gears } ->
             existingGearNums = Dict.get gd gearCoord |> Result.withDefault []
             Dict.insert gd gearCoord (List.append existingGearNums number.value)
 
+sumGearRatios : GearRatios -> U32
+sumGearRatios = \grs ->
+    Dict.walk grs 0 \runningSum, _coord, ratios ->
+        ratioOne = List.get ratios 0 |> Result.withDefault 0
+        ratioTwo = List.get ratios 1 |> Result.withDefault 0
+        ratio = ratioOne * ratioTwo
+        runningSum + ratio
+
 ## Part II: We now need to know if the number is adjacent to a gear specifically.
 ## To do this, we should:
 ##  - keep track of whether a symbol is a gear
@@ -186,6 +194,8 @@ main =
 
     dbg allGearRatios
 
+    grSum = sumGearRatios allGearRatios
+
     sum = List.walk partNumbers 0 \runningSum, partNum -> runningSum + partNum
 
-    Stdout.line "All done! Part numbers summed to \(Num.toStr sum)"
+    Stdout.line "All done! Part numbers summed to \(Num.toStr sum) and gear ratios to \(Num.toStr grSum)"
