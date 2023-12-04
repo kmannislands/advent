@@ -49,6 +49,21 @@ initialState = {
     numbers: []
 }
 
+## Update the state when we are done with a number (encounter a non-digit character).
+## TODO: Update to store line/col snapshot
+finishNumber : ParserState -> ParserState
+finishNumber = \state ->
+    if List.len state.digitBytes > 0 then
+        parsedNum = bytesToU32 state.digitBytes
+        {
+            state&
+            digitBytes: [],
+            numbers: List.append state.numbers parsedNum
+        }
+    else
+        state
+
+
 # Any more complicated and we'll need a state machine, eh?
 reduce: ParserState, U8 -> ParserState
 reduce = \privateState, byte ->
@@ -59,13 +74,7 @@ reduce = \privateState, byte ->
     else
         # If there are digitsBytes, finish them and push a number regardless of what comes next
         # The fact that we've hit any non-digit char means we're done with the number
-        newState = if List.len state.digitBytes > 0 then
-            parsedNum = bytesToU32 state.digitBytes
-            {
-                state&
-                digitBytes: [],
-                numbers: List.append state.numbers parsedNum
-            } else  state
+        newState = finishNumber state
         if isPeriod byte then
             # Advance line
             newState
@@ -75,8 +84,6 @@ reduce = \privateState, byte ->
         else 
             # We have a character, add its coordinates to the set
             newState
-
-
 
 main =
     parsed = List.walk sample initialState reduce
