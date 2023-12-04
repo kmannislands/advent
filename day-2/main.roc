@@ -20,13 +20,15 @@ advance = \ctx, chars ->
 lit = \litStr ->
     litLen = Str.countUtf8Bytes litStr
     \ctx ->
+        # TODO this could be faster with a walkScalarsUntil
         subStr = Str.toUtf8 ctx.prog
             |> List.dropFirst ctx.col
             |> Str.fromUtf8
+            # Seems fine not to handle the utf8 conversion error here since we just got the bytes from a str
             |> Result.withDefault ""
         matched = Str.startsWith subStr litStr 
         if matched then
-            TokenLit { value: litStr, ctx: advance ctx litLen }
+            Token { value: 0, ctx: advance ctx litLen }
         else
             ParseError ctx "Couldn't find expected lit '\(litStr)' at offset \(Num.toStr ctx.col)"
 
@@ -34,13 +36,13 @@ lit = \litStr ->
 expect
     ctx = progCtx "Game 1"
     parsedToken = ctx |> (lit "Game")
-    parsedToken == TokenLit { value: "Game", ctx: advance ctx 4 }
+    parsedToken == Token { value: 0, ctx: advance ctx 4 }
 
-# It looks at the current context
+# It looks at the current context correctly
 expect
     ctx = progCtx "foobar"
     parsedToken = (advance ctx 3) |> (lit "bar")
-    parsedToken == TokenLit { value: "bar", ctx: advance ctx 6 }
+    parsedToken == Token { value: 0, ctx: advance ctx 6 }
 
 ## From Day 1: Given as ASCII byte, return whether its a valid digit
 isDigit = \charByte -> Bool.and ('0' <= charByte) (charByte <= '9')
@@ -84,8 +86,8 @@ uint32 = \_ ->
             [..] ->
                 uint32Val = bytesToU32 numberBytes
                 newCtx = advance ctx bytesEaten
-                TokenNumber { value: uint32Val, ctx: newCtx }
-            _ -> ParseError ctx
+                Token { value: uint32Val, ctx: newCtx }
+            _ -> ParseError ctx "Couldn't parse a number"
 
 progCtx = \prog -> { prog: prog, line: 0, col: 0 }
 
@@ -93,24 +95,72 @@ progCtx = \prog -> { prog: prog, line: 0, col: 0 }
 expect 
     ctx = progCtx "23"
     parsedToken = ctx |> (uint32 {})
-    parsedToken == TokenNumber { value: 23, ctx: advance ctx 2 }
+    parsedToken == Token { value: 23, ctx: advance ctx 2 }
 
 ## Check that we trim leading whitespace when parsing a number
 expect
     ctx = progCtx "  420"
     parsedToken = ctx |> (uint32 {})
-    parsedToken == TokenNumber { value: 420, ctx: advance ctx 5 }
+    parsedToken == Token { value: 420, ctx: advance ctx 5 }
 
 ## Check that we stop eating chars when there's a non digit
 expect
     ctx = progCtx "111:"
     parsedToken = ctx |> (uint32 {})
-    parsedToken == TokenNumber { value: 111, ctx: advance ctx 3 }
+    parsedToken == Token { value: 111, ctx: advance ctx 3 }
 
 expect
     ctx = progCtx "2 3"
     parsedToken = ctx |> (uint32 {})
-    parsedToken == TokenNumber { value: 2, ctx: advance ctx 1 }
+    parsedToken == Token { value: 2, ctx: advance ctx 1 }
+
+## Now let's write out first combinator to represent tokens in order
+##
+## We want it to look like:
+##
+## gameId = seq [
+##    (lit "Game")m
+##    (uint32 {})
+##    (lit ":")
+## ]
+
+seq = \parsers ->
+    \ctx ->
+        init = { errored: Bool.false, parsed: [], error: ParseError ctx "No seq" }
+        seqResult = List.walkUntil parsers init \state, parser ->
+            currentCtx = when List.last state.parsed is
+                Ok lastParsed -> lastParsed.ctx
+                _ -> ctx
+            parseResult = parser currentCtx
+            when parseResult is
+                ParseError errorCtx errorMsg ->
+                    Break { state& errored: Bool.true, error: ParseError errorCtx errorMsg }
+                Token result ->
+                    Continue { state& parsed: List.append state.parsed result }
+        if seqResult.errored then
+            seqResult.error
+        else
+            when List.last seqResult.parsed is
+                Ok lastParsed -> Token { value: seqResult.parsed, ctx: lastParsed.ctx }
+                _ -> ParseError ctx "Parsed without error yet got an empty sequence"
+
+gameIdParser = seq [
+   (lit "Game"),
+   (uint32 {}),
+   (lit ":"),
+]
+
+expect
+    ctx = progCtx "Game 420:"
+    parsedToken = gameIdParser ctx
+    parsedToken ==  Token {
+        value: [
+            { value: 0, ctx },
+            { value: 420, ctx },
+            { value: 0, ctx }
+        ],
+        ctx: advance ctx 9
+    }
 
 parseGameId = \gamePart ->
     when Str.replaceFirst gamePart "Game " "" |> Str.toU32 is
