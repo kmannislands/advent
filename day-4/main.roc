@@ -2,7 +2,7 @@ app "day-2-solution"
     packages { pf: "https://github.com/roc-lang/basic-cli/releases/download/0.7.0/bkGby8jb0tmZYsy2hg1E_B2QrCgcSTxdUlHtETwm5m4.tar.br" }
     imports [
         pf.Stdout,
-        "test.txt" as sample : Str,
+        "input.txt" as sample : Str,
     ]
     provides [main] to pf
 
@@ -38,19 +38,22 @@ strToNumbers = \numbersStr ->
         |> List.keepOks \numStr ->
             Str.trim numStr |> Str.toU32
 
-drawPoints : Draw -> U32
-drawPoints = \{ winningNums, numbers } ->
-    countWinningNumbers = Set.intersection winningNums numbers |> Set.len |> Num.toU32
+drawPoints : Nat -> U32
+drawPoints = \countWinningNumbers ->
     if countWinningNumbers == 0 then
         0
     else
         # > The first match makes the card worth one point and each match after the first doubles the point value
         # > of that card.
-        pointPower = Num.subChecked countWinningNumbers 1 |> Result.withDefault 0
+        pointPower = Num.toU32 countWinningNumbers |> Num.subChecked 1 |> Result.withDefault 0
         points = Num.powInt 2 pointPower
         points
 
+winningNumbers : Draw -> Nat
+winningNumbers = \{ winningNums, numbers } ->
+    Set.intersection winningNums numbers |> Set.len
+
 main =
     draws = scratchOffDraws sample
-    totalPoints = List.walk draws 0 \runningSum, draw -> runningSum + (drawPoints draw)
+    totalPoints = List.walk draws 0 \runningSum, draw -> runningSum + (winningNumbers draw |> drawPoints)
     Stdout.line "Total points: \(Num.toStr totalPoints)"
