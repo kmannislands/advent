@@ -11,5 +11,32 @@ app "day-2-solution"
 # type system's strictness and lack of editor support plus the fact that `dbg` statements don't seem to work with
 # `roc test` made the loop unpleasant. Let's go without tests today.
 
+Draw : {
+    winningNums: List U32,
+    numbers: List U32
+}
+
+scratchOffDraws : Str -> List Draw
+scratchOffDraws = \drawsStr ->
+    drawLines = Str.split drawsStr "\n"
+    List.map drawLines drawLine
+        
+
+drawLine: Str -> Draw
+drawLine = \drawStr ->
+    when Str.split drawStr " | " is
+        [winningNumbersStr, drawnNumbersStr] -> {
+            winningNums: strToNumbers winningNumbersStr,
+            numbers: strToNumbers drawnNumbersStr
+        }
+        _ -> crash "Malformed draw result"
+
+strToNumbers : Str -> List U32
+strToNumbers = \numbersStr ->
+    Str.trim numbersStr |> Str.split " "
+        |> List.keepOks \numStr ->
+            Str.trim numStr |> Str.toU32
+
 main =
+    dbg scratchOffDraws sample
     Stdout.line sample
