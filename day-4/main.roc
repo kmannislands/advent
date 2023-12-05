@@ -12,8 +12,8 @@ app "day-2-solution"
 # `roc test` made the loop unpleasant. Let's go without tests today.
 
 Draw : {
-    winningNums: List U32,
-    numbers: List U32
+    winningNums: Set U32,
+    numbers: Set U32
 }
 
 scratchOffDraws : Str -> List Draw
@@ -26,17 +26,27 @@ drawLine: Str -> Draw
 drawLine = \drawStr ->
     when Str.split drawStr " | " is
         [winningNumbersStr, drawnNumbersStr] -> {
-            winningNums: strToNumbers winningNumbersStr,
-            numbers: strToNumbers drawnNumbersStr
+            winningNums: strToNumbers winningNumbersStr |> Set.fromList,
+            numbers: strToNumbers drawnNumbersStr |> Set.fromList
         }
         _ -> crash "Malformed draw result"
 
+## Parse a space separated list of numbers to U32s
 strToNumbers : Str -> List U32
 strToNumbers = \numbersStr ->
     Str.trim numbersStr |> Str.split " "
         |> List.keepOks \numStr ->
             Str.trim numStr |> Str.toU32
 
+drawPoints : Draw -> U32
+drawPoints = \{ winningNums, numbers } ->
+    countWinningNumbers = Set.intersection numbers winningNums |> Set.len |> Num.toU32
+    # > The first match makes the card worth one point and each match after the first doubles the point value
+    # > of that card.
+    pointPower = Num.subChecked countWinningNumbers 1 |> Result.withDefault 0
+    Num.powInt 2 pointPower
+
 main =
-    dbg scratchOffDraws sample
-    Stdout.line sample
+    draws = scratchOffDraws sample
+    totalPoints = List.walk draws 0 \runningSum, draw -> runningSum + (drawPoints draw)
+    Stdout.line "Total points: \(Num.toStr totalPoints)"
