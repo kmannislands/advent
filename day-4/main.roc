@@ -40,11 +40,15 @@ strToNumbers = \numbersStr ->
 
 drawPoints : Draw -> U32
 drawPoints = \{ winningNums, numbers } ->
-    countWinningNumbers = Set.intersection numbers winningNums |> Set.len |> Num.toU32
-    # > The first match makes the card worth one point and each match after the first doubles the point value
-    # > of that card.
-    pointPower = Num.subChecked countWinningNumbers 1 |> Result.withDefault 0
-    Num.powInt 2 pointPower
+    countWinningNumbers = Set.intersection winningNums numbers |> Set.len |> Num.toU32
+    if countWinningNumbers == 0 then
+        0
+    else
+        # > The first match makes the card worth one point and each match after the first doubles the point value
+        # > of that card.
+        pointPower = Num.subChecked countWinningNumbers 1 |> Result.withDefault 0
+        points = Num.powInt 2 pointPower
+        points
 
 main =
     draws = scratchOffDraws sample
