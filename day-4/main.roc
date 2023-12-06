@@ -53,7 +53,37 @@ winningNumbers : Draw -> Nat
 winningNumbers = \{ winningNums, numbers } ->
     Set.intersection winningNums numbers |> Set.len
 
+# > ...scratchcards only cause you to win more scratchcards equal to the number of winning numbers you have.
+# > Specifically, you win copies of the scratchcards below the winning card equal to the number of matches.
+# > So, if card 10 were to have 5 matching numbers, you would win one copy each of cards 11, 12, 13, 14, and 15.
+finalNumberOftickets : List Nat -> U32
+finalNumberOftickets = \wins ->
+    initialState : WalkerState
+    initialState = { nextMultiples: (List.repeat 1 233), countTickets: 0 }
+    List.walk wins initialState reducer |> .countTickets
+
+WalkerState : {
+    nextMultiples: List Nat,
+    countTickets: U32
+}
+
+
+reducer : WalkerState, Nat -> WalkerState
+reducer = \state, win ->
+    copiesOfCurrentCard = List.get state.nextMultiples 0 |> Result.withDefault 1
+    nextMultiples = List.dropFirst state.nextMultiples 1
+        |> List.mapWithIndex \copiesOfNextCard, i ->
+            if i < win then
+                (copiesOfNextCard + copiesOfCurrentCard)
+            else
+                win
+
+    { nextMultiples, countTickets: state.countTickets + (Num.toU32 copiesOfCurrentCard) }
+
 main =
     draws = scratchOffDraws sample
-    totalPoints = List.walk draws 0 \runningSum, draw -> runningSum + (winningNumbers draw |> drawPoints)
-    Stdout.line "Total points: \(Num.toStr totalPoints)"
+    drawWins : List Nat
+    drawWins = List.map draws winningNumbers
+    totalPoints = List.walk drawWins 0 \runningSum, wins -> runningSum + (drawPoints wins)
+    totalTickets = finalNumberOftickets drawWins
+    Stdout.line "Total points: \(Num.toStr totalPoints). Total tickets at halt: \(Num.toStr totalTickets)"
