@@ -80,6 +80,28 @@ expect
         ]
     }
 
+performRowLookup : LookupRange -> (U32 -> Result U32 [NotMapped])
+performRowLookup = \{ src, dest, len } ->
+    rangeDiff = src - dest
+    \srcVal ->
+        isInSrcRange = (srcVal >= src) && srcVal <= (src + (len - 1))
+        if isInSrcRange then
+            # return the mapped value
+            Ok (srcVal - rangeDiff)
+        else
+            Err NotMapped
+
+expect
+    lookupFn = performRowLookup { dest: 50, src: 98, len: 2 }
+    mappedVal = lookupFn 99
+    mappedVal == Ok 51
+
+expect
+    lookupFn = performRowLookup { dest: 50, src: 98, len: 2 }
+    lookupFn 100 == Err NotMapped
+
+
+
 main =
     parsed = lookup "seed-to-soil map:\n50 98 2\n52 50 48"
     dbg parsed
