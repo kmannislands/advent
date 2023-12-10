@@ -82,12 +82,13 @@ expect
 
 performRowLookup : LookupRange -> (U32 -> Result U32 [NotMapped])
 performRowLookup = \{ src, dest, len } ->
-    rangeDiff = src - dest
+    rangeDiff = (Num.toI32 src) - (Num.toI32 dest)
     \srcVal ->
         isInSrcRange = (srcVal >= src) && srcVal <= (src + (len - 1))
         if isInSrcRange then
             # return the mapped value
-            Ok (srcVal - rangeDiff)
+            safeSrcVal = Num.toI32 srcVal
+            Ok (Num.toU32 (safeSrcVal - rangeDiff))
         else
             Err NotMapped
 
@@ -101,6 +102,29 @@ expect
     lookupFn 100 == Err NotMapped
 
 
+expect
+    lookupFn = performRowLookup { dest: 52, src: 50, len: 48 }
+    lookupFn 50 == Ok 52
+
+
+performLookup : List LookupRange -> (U32 -> U32)
+performLookup = \lookups ->
+    \srcValue ->
+        List.walkUntil lookups srcValue \state, lookupRange ->
+            lookupedUpValue = (performRowLookup lookupRange) srcValue
+            when lookupedUpValue is
+                Ok value -> Break value
+                Err NotMapped -> Continue state
+
+expect
+    lookupFn = performLookup [{ dest: 50, src: 98, len: 2 }, { dest: 52, src: 50, len: 48 }]
+    mappedVal = lookupFn 99
+    mappedVal == 51
+
+expect
+    lookupFn = performLookup [{ dest: 50, src: 98, len: 2 }, { dest: 52, src: 50, len: 48 }]
+    mappedVal = lookupFn 2
+    mappedVal == 2
 
 main =
     parsed = lookup "seed-to-soil map:\n50 98 2\n52 50 48"
