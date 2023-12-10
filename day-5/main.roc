@@ -6,13 +6,7 @@ app "day-2-solution"
     ]
     provides [main] to pf
 
-# Ie seed -> soil
-Lookup : {
-    from: Str,
-    to: Str,
-    ranges: List LookupRange
-}
-
+## Utility to split lists
 popFirst : List a -> Result { first: a, rest: List a } [OutOfBounds]
 popFirst = \list ->
     List.get list 0
@@ -24,6 +18,39 @@ expect
 expect
     popFirst [] == Err OutOfBounds
 
+
+## Parse a single line of the lookup
+LookupRange : {
+    dest: U32,
+    src: U32,
+    len: U32,
+}
+
+lookupRow : Str -> LookupRange
+lookupRow = \lookupLineStr ->
+    parts = Str.split lookupLineStr " "
+
+    when parts is
+        # Non-ideal, would swallow U32 errors
+        [dest, src, len] -> {
+            dest: Str.toU32 dest |> Result.withDefault 0,
+            src: Str.toU32 src |> Result.withDefault 0,
+            len: Str.toU32 len |> Result.withDefault 0,
+        }
+        _ -> crash "Lookup row wasn't in the expected format \(lookupLineStr)"
+
+expect
+    lookupRow "50 98 2" == { dest: 50, src: 98, len: 2 }
+
+
+# Ie seed -> soil
+Lookup : {
+    from: Str,
+    to: Str,
+    ranges: List LookupRange
+}
+
+## Parse a single lookup dictionary
 lookup : Str -> Lookup
 lookup = \lookupStr ->
     lines = Str.split lookupStr "\n"
@@ -52,29 +79,6 @@ expect
             { dest: 52, src: 50, len: 48 }
         ]
     }
-
-
-LookupRange : {
-    dest: U32,
-    src: U32,
-    len: U32,
-}
-
-lookupRow : Str -> LookupRange
-lookupRow = \lookupLineStr ->
-    parts = Str.split lookupLineStr " "
-
-    when parts is
-        # Non-ideal, would swallow U32 errors
-        [dest, src, len] -> {
-            dest: Str.toU32 dest |> Result.withDefault 0,
-            src: Str.toU32 src |> Result.withDefault 0,
-            len: Str.toU32 len |> Result.withDefault 0,
-        }
-        _ -> crash "Lookup row wasn't in the expected format \(lookupLineStr)"
-
-expect
-    lookupRow "50 98 2" == { dest: 50, src: 98, len: 2 }
 
 main =
     parsed = lookup "seed-to-soil map:\n50 98 2\n52 50 48"
