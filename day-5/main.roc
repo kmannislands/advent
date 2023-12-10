@@ -6,17 +6,11 @@ app "day-2-solution"
     ]
     provides [main] to pf
 
-# LookupRange : {
-#     destRangeStart: U32,
-#     srcRangeStart: U32,
-#     rangeLength: U32,
-# }
-
 # Ie seed -> soil
 Lookup : {
     from: Str,
     to: Str,
-    # ranges: List LookupRange
+    ranges: List LookupRange
 }
 
 popFirst : List a -> Result { first: a, rest: List a } [OutOfBounds]
@@ -33,18 +27,54 @@ expect
 lookup : Str -> Lookup
 lookup = \lookupStr ->
     lines = Str.split lookupStr "\n"
-    { first } = when popFirst lines is
+    { first, rest } = when popFirst lines is
         Ok n -> n
         _ -> crash "didn't get at least one line from list"
     fromToParts = Str.split first "-to-"
 
     when fromToParts is
-        [from, toPlusMap] -> { from: from, to: Str.replaceLast toPlusMap " map:" "" }
+        [from, toPlusMap] ->
+            to = Str.replaceLast toPlusMap " map:" ""
+            {
+                from: from,
+                to,
+                ranges: List.map rest lookupRow
+            }
         _ -> crash "From to wasn't in the expected shape \(first)"
 
 expect
-    parsed = lookup "seed-to-soil map:\n"
-    parsed == { from: "seed", to: "soil" }
+    parsed = lookup "seed-to-soil map:\n50 98 2\n52 50 48"
+    parsed == {
+        from: "seed",
+        to: "soil",
+        ranges: [
+            { dest: 50, src: 98, len: 2 },
+            { dest: 52, src: 50, len: 48 }
+        ]
+    }
+
+
+LookupRange : {
+    dest: U32,
+    src: U32,
+    len: U32,
+}
+
+lookupRow : Str -> LookupRange
+lookupRow = \lookupLineStr ->
+    parts = Str.split lookupLineStr " "
+
+    when parts is
+        # Non-ideal, would swallow U32 errors
+        [dest, src, len] -> {
+            dest: Str.toU32 dest |> Result.withDefault 0,
+            src: Str.toU32 src |> Result.withDefault 0,
+            len: Str.toU32 len |> Result.withDefault 0,
+        }
+        _ -> crash "Lookup row wasn't in the expected format \(lookupLineStr)"
+
+expect
+    lookupRow "50 98 2" == { dest: 50, src: 98, len: 2 }
 
 main =
     parsed = lookup "seed-to-soil map:\n50 98 2\n52 50 48"
